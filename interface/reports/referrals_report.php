@@ -165,36 +165,29 @@ if (!empty($_POST['form_refresh'])) {
 <div id="report_results">
 <table class='table' width='98%' id='mymaintable'>
 <thead class='thead-light'>
-<th> <?php echo xlt('Refer To'); ?> </th>
+<th> <?php echo xlt('Referrer'); ?> </th>
 <th> <?php echo xlt('Refer Date'); ?> </th>
-<th> <?php echo xlt('Reply Date'); ?> </th>
-<th> <?php echo xlt('Patient'); ?> </th>
-<th> <?php echo xlt('ID'); ?> </th>
-<th> <?php echo xlt('Reason'); ?> </th>
+<th> <?php echo xlt('Amount'); ?> </th>
 </thead>
 <tbody>
     <?php
     if ($_POST['form_refresh']) {
         $query = "SELECT t.id, t.pid, " .
-        "d1.field_value AS refer_date, " .
-        "d3.field_value AS reply_date, " .
-        "d4.field_value AS body, " .
-        "ut.organization, uf.facility_id, p.pubpid, " .
-        "CONCAT(uf.fname,' ', uf.lname) AS referer_name, " .
-        "CONCAT(ut.fname,' ', ut.lname) AS referer_to, " .
-        "CONCAT(p.fname,' ', p.lname) AS patient_name " .
+        "year(d1.field_value) AS refer_year, " .
+        "month(d1.field_value) AS refer_month, " .
+        "sum(d9.field_value) AS refer_amount, " .
+        "CONCAT(uf.fname,' ', uf.lname) AS referer_name " .
         "FROM transactions AS t " .
         "LEFT JOIN patient_data AS p ON p.pid = t.pid " .
-        "JOIN      lbt_data AS d1 ON d1.form_id = t.id AND d1.field_id = 'refer_date' " .
-        "LEFT JOIN lbt_data AS d3 ON d3.form_id = t.id AND d3.field_id = 'reply_date' " .
-        "LEFT JOIN lbt_data AS d4 ON d4.form_id = t.id AND d4.field_id = 'body' " .
-        "LEFT JOIN lbt_data AS d7 ON d7.form_id = t.id AND d7.field_id = 'refer_to' " .
+        "LEFT JOIN lbt_data AS d1 ON d1.form_id = t.id AND d1.field_id = 'refer_date' " .
         "LEFT JOIN lbt_data AS d8 ON d8.form_id = t.id AND d8.field_id = 'refer_from' " .
-        "LEFT JOIN users AS ut ON ut.id = d7.field_value " .
+        "LEFT JOIN lbt_data AS d9 ON d9.form_id = t.id AND d9.field_id = 'refer_amount' " .
         "LEFT JOIN users AS uf ON uf.id = d8.field_value " .
         "WHERE t.title = 'LBTref' AND " .
-        "d1.field_value >= ? AND d1.field_value <= ? " .
-        "ORDER BY ut.organization, d1.field_value, t.id";
+	"d1.field_value >= ? AND d1.field_value <= ? " .
+	"GROUP BY referer_name, refer_year, refer_month " .
+	"ORDER BY referer_name, d1.field_value, t.id";
+	echo $query;
         $res = sqlStatement($query, array($form_from_date, $form_to_date));
 
         while ($row = sqlFetchArray($res)) {
@@ -218,26 +211,18 @@ if (!empty($_POST['form_refresh'])) {
             if ($row['organization'] != null || $row['organization'] != '') {
                 echo text($row['organization']);
             } else {
-                echo text($row['referer_to']);
+                echo text($row['referer_name']);
             }
             ?>
     </td>
     <td>
      <a href='#' onclick="return show_referral(<?php echo js_escape($row['id']); ?>)">
-            <?php echo text(oeFormatShortDate($row['refer_date'])); ?>&nbsp;
+            <?php echo text(oeFormatShortDate($row['refer_year'])); ?>&nbsp;
+            <?php echo text(oeFormatShortDate($row['refer_month'])); ?>&nbsp;
      </a>
     </td>
     <td>
-            <?php echo text(oeFormatShortDate($row['reply_date'])) ?>
-    </td>
-    <td>
-            <?php echo text($row['patient_name']) ?>
-    </td>
-    <td>
-            <?php echo text($row['pubpid']) ?>
-    </td>
-    <td>
-            <?php echo text($row['body']) ?>
+            <?php echo text($row['refer_amount']) ?>
     </td>
    </tr>
             <?php
